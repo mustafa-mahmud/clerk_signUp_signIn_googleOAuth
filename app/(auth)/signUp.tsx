@@ -1,7 +1,7 @@
 import { useAuth, useSignUp } from '@clerk/expo';
 import { type Href, Link, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Modal from 'react-native-modal';
 
@@ -10,9 +10,9 @@ export default function SignUp() {
   const { isSignedIn } = useAuth();
   const router = useRouter();
 
-  const [emailAddress, setEmailAddress] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [code, setCode] = React.useState('');
+  const [emailAddress, setEmailAddress] = useState('');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
 
   const handleSubmit = async () => {
     //create temp user virtualy
@@ -57,7 +57,8 @@ export default function SignUp() {
         },
       });
     } else {
-      console.error('Sign-up attempt not complete:', signUp);
+      // console.error('Sign-up attempt not complete:', signUp);
+      Alert.alert('Error', 'Verify code is wrong');
     }
   };
 
