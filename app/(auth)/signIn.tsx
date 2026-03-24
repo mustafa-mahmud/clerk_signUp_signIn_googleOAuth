@@ -1,11 +1,18 @@
-import { useAuth, useSignUp } from '@clerk/expo';
+import GoogleSignIn from '@/components/GoogleSignIn';
+import { useSignIn } from '@clerk/expo';
 import { type Href, Link, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-export default function SignUp() {
-  const { signUp, errors, fetchStatus } = useSignUp();
-  const { isSignedIn } = useAuth();
+export default function SignIn() {
+  const { signIn, errors, fetchStatus } = useSignIn();
   const router = useRouter();
 
   const [emailAddress, setEmailAddress] = React.useState('');
@@ -13,27 +20,59 @@ export default function SignUp() {
   const [code, setCode] = React.useState('');
 
   const handleSubmit = async () => {
-    console.log(159);
-
-    const { error } = await signUp.create({
-      emailAddress: 'mithuweb000@gmail.com',
-      password: 'IMDB!@#$123456789',
+    const { error } = await signIn.password({
+      emailAddress,
+      password,
     });
     if (error) {
       console.error(JSON.stringify(error, null, 2));
       return;
     }
 
-    if (!error) await signUp.verifications.sendEmailCode();
+    if (signIn.status === 'complete') {
+      await signIn.finalize({
+        navigate: ({ session, decorateUrl }) => {
+          if (session?.currentTask) {
+            // Handle pending session tasks
+            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+            console.log(session?.currentTask);
+            return;
+          }
+
+          const url = decorateUrl('/');
+          if (url.startsWith('http')) {
+            window.location.href = url;
+          } else {
+            router.push(url as Href);
+          }
+        },
+      });
+    } else if (
+      signIn.status === 'needs_second_factor' ||
+      signIn.status === 'needs_client_trust'
+    ) {
+      // Handle second factor or client trust verification
+      // For other second factor strategies,
+      // see https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
+      // see https://clerk.com/docs/guides/development/custom-flows/authentication/client-trust
+      const emailCodeFactor = signIn.supportedSecondFactors.find(
+        (factor) => factor.strategy === 'email_code',
+      );
+
+      if (emailCodeFactor) {
+        await signIn.mfa.sendEmailCode();
+      }
+    } else {
+      // Check why the sign-in is not complete
+      console.error('Sign-in attempt not complete:', signIn);
+    }
   };
 
   const handleVerify = async () => {
-    await signUp.verifications.verifyEmailCode({
-      code,
-    });
-    if (signUp.status === 'complete') {
-      await signUp.finalize({
-        // Redirect the user to the home page after signing up
+    await signIn.mfa.verifyEmailCode({ code });
+
+    if (signIn.status === 'complete') {
+      await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
             // Handle pending session tasks
@@ -51,19 +90,14 @@ export default function SignUp() {
         },
       });
     } else {
-      // Check why the sign-up is not complete
-      console.error('Sign-up attempt not complete:', signUp);
+      // Check why the sign-in is not complete
+      console.error('Sign-in attempt not complete:', signIn);
     }
   };
 
-  if (signUp.status === 'complete' || isSignedIn) {
-    return null;
-  }
-
   if (
-    signUp.status === 'missing_requirements' &&
-    signUp.unverifiedFields.includes('email_address') &&
-    signUp.missingFields.length === 0
+    signIn.status === 'needs_second_factor' ||
+    signIn.status === 'needs_client_trust'
   ) {
     return (
       <View style={styles.container}>
@@ -78,8 +112,7 @@ export default function SignUp() {
           onChangeText={(code) => setCode(code)}
           keyboardType="numeric"
         />
-        {errors && <Text>Some wrong in sign up</Text>}
-
+        {errors && <Text>Some wrong in sign in</Text>}
         {/* {errors.fields.code && (
           <Text style={styles.error}>{errors.fields.code.message}</Text>
         )} */}
@@ -99,10 +132,15 @@ export default function SignUp() {
             styles.secondaryButton,
             pressed && styles.buttonPressed,
           ]}
-          onPress={() => signUp.verifications.sendEmailCode()}
+          onPress={() => signIn.mfa.sendEmailCode()}
         >
           <Text style={styles.secondaryButtonText}>I need a new code</Text>
         </Pressable>
+
+        {/*  */}
+        <TouchableOpacity onPress={() => router.push('./sign-in')}>
+          <Text>Sign In</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -110,7 +148,7 @@ export default function SignUp() {
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { fontSize: 24, fontWeight: 'bold' }]}>
-        Sign up
+        Sign in
       </Text>
       <Text style={styles.label}>Email address</Text>
       <TextInput
@@ -122,10 +160,7 @@ export default function SignUp() {
         onChangeText={(emailAddress) => setEmailAddress(emailAddress)}
         keyboardType="email-address"
       />
-      {errors && <Text>Some wrong in sign up</Text>}
-      {/* {errors.fields.emailAddress && (
-        <Text style={styles.error}>{errors.fields.emailAddress.message}</Text>
-      )} */}
+      {/* {errors && <Text>Some wrong in sign in</Text>} */}
       <Text style={styles.label}>Password</Text>
       <TextInput
         style={styles.input}
@@ -135,41 +170,28 @@ export default function SignUp() {
         secureTextEntry={true}
         onChangeText={(password) => setPassword(password)}
       />
-      {errors && <Text>Some wrong in sign up</Text>}
-      {/* {errors.fields.password && (
-        <Text style={styles.error}>{errors.fields.password.message}</Text>
-      )} */}
+
+      <GoogleSignIn />
+      {/* {errors && <Text>Some wrong in sign in</Text>} */}
       <Pressable
-        style={{
-          backgroundColor: 'blue',
-          padding: 10,
-        }}
-        // style={({ pressed }) => [
-        //   styles.button,
-        //   (!emailAddress || !password || fetchStatus === 'fetching') &&
-        //     styles.buttonDisabled,
-        //   pressed && styles.buttonPressed,
-        // ]}
+        style={({ pressed }) => [
+          styles.button,
+          (!emailAddress || !password || fetchStatus === 'fetching') &&
+            styles.buttonDisabled,
+          pressed && styles.buttonPressed,
+        ]}
         onPress={handleSubmit}
-        // disabled={!emailAddress || !password || fetchStatus === 'fetching'}
+        disabled={!emailAddress || !password || fetchStatus === 'fetching'}
       >
-        <Text style={styles.buttonText}>Sign up</Text>
+        <Text style={styles.buttonText}>Continue</Text>
       </Pressable>
-      {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
-      {errors && <Text>Some wrong in sign up</Text>}
-      {/* {errors && (
-        <Text style={styles.debug}>{JSON.stringify(errors, null, 2)}</Text>
-      )} */}
 
       <View style={styles.linkContainer}>
-        <Text>Already have an account? </Text>
-        <Link href="/sign-in">
-          <Text style={{ color: '#0a7ea4' }}>Sign in </Text>
+        <Text>Don't have an account? </Text>
+        <Link href="/signUp">
+          <Text style={{ color: '#0a7ea4' }}>Sign up </Text>
         </Link>
       </View>
-
-      {/* Required for sign-up flows. Clerk's bot sign-up protection is enabled by default */}
-      <View nativeID="clerk-captcha" />
     </View>
   );
 }
@@ -212,7 +234,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: '600',
-    textAlign: 'center',
   },
   secondaryButton: {
     paddingVertical: 12,
