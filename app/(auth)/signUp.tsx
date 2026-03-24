@@ -1,7 +1,14 @@
 import { useAuth, useSignUp } from '@clerk/expo';
 import { type Href, Link, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignUp() {
@@ -56,7 +63,8 @@ export default function SignUp() {
         },
       });
     } else {
-      console.error('Sign-up attempt not complete:', signUp);
+      // console.error('Sign-up attempt not complete:', signUp);
+      Alert.alert('Error', 'Verify code is wrong');
     }
   };
 
