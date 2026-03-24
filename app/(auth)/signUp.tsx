@@ -14,6 +14,7 @@ export default function SignUp() {
   const [code, setCode] = React.useState('');
 
   const handleSubmit = async () => {
+    //create temp user virtualy
     const { error } = await signUp.create({
       emailAddress: 'mithuweb000@gmail.com',
       //@ts-ignore
@@ -24,13 +25,20 @@ export default function SignUp() {
       return;
     }
 
+    //send verification code
     if (!error) await signUp.verifications.sendEmailCode();
+  };
+
+  //send new verification code
+  const newVerifyCodeSend = async () => {
+    await signUp.verifications.sendEmailCode();
   };
 
   const handleVerify = async () => {
     await signUp.verifications.verifyEmailCode({
       code,
     });
+
     if (signUp.status === 'complete') {
       await signUp.finalize({
         navigate: ({ session, decorateUrl }) => {
@@ -62,31 +70,34 @@ export default function SignUp() {
     signUp.missingFields.length === 0
   ) {
     return (
-      <View>
-        <Text>Verify your account</Text>
+      <SafeAreaView className="p-4">
+        <Text className="text-xl">Verify your account</Text>
         <TextInput
+          className="border border-blue-200 rounded-lg px-2 bg-white"
           value={code}
           placeholder="Enter your verification code"
           placeholderTextColor="#666666"
           onChangeText={(code) => setCode(code)}
           keyboardType="numeric"
         />
-        {errors && (
-          <Text className="text-[10px] text-red-300">
-            Some wrong in sign up
-          </Text>
-        )}
 
-        <Pressable onPress={handleVerify} disabled={fetchStatus === 'fetching'}>
-          <Text>Verify</Text>
+        <Pressable
+          className="bg-blue-300 p-2.5 my-5 rounded-md"
+          onPress={handleVerify}
+        >
+          <Text className="text-center">Verify</Text>
         </Pressable>
-        <Pressable>
-          <Text>I need a new code</Text>
+        <Pressable
+          onPress={newVerifyCodeSend}
+          className="bg-gray-300 self-center p-1.5 rounded-md"
+        >
+          <Text className="text-center text-[10px]">I need a new code</Text>
         </Pressable>
-      </View>
+      </SafeAreaView>
     );
   }
 
+  ///////////////////////////////////////////////////////////
   return (
     <SafeAreaView className="flex-1 p-4">
       <Text className="text-xl mb-5">Sign up</Text>
@@ -112,7 +123,6 @@ export default function SignUp() {
       <Pressable
         className="bg-blue-300 rounded-md my-7 p-2.5"
         onPress={handleSubmit}
-        disabled={!emailAddress || !password || fetchStatus === 'fetching'}
       >
         <Text className="text-center">Sign up</Text>
       </Pressable>
