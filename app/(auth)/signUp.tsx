@@ -1,8 +1,9 @@
 import { useAuth, useSignUp } from '@clerk/expo';
 import { type Href, Link, useRouter } from 'expo-router';
-import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Modal from 'react-native-modal';
 
 export default function SignUp() {
   const { signUp, errors, fetchStatus } = useSignUp();
@@ -70,30 +71,39 @@ export default function SignUp() {
     signUp.missingFields.length === 0
   ) {
     return (
-      <SafeAreaView className="p-4">
-        <Text className="text-xl">Verify your account</Text>
-        <TextInput
-          className="border border-blue-200 rounded-lg px-2 bg-white"
-          value={code}
-          placeholder="Enter your verification code"
-          placeholderTextColor="#666666"
-          onChangeText={(code) => setCode(code)}
-          keyboardType="numeric"
-        />
+      <Modal
+        isVisible={true}
+        className="p-4"
+        style={{ margin: 0 }}
+        statusBarTranslucent={true}
+      >
+        <View className="bg-white p-5 rounded-md">
+          <Text className="text-xl">Verify your account</Text>
+          <TextInput
+            className="border border-blue-200 rounded-lg px-2 bg-white"
+            value={code}
+            placeholder="Enter your verification code"
+            placeholderTextColor="#666666"
+            onChangeText={(code) => setCode(code)}
+            keyboardType="numeric"
+          />
 
-        <Pressable
-          className="bg-blue-300 p-2.5 my-5 rounded-md"
-          onPress={handleVerify}
-        >
-          <Text className="text-center">Verify</Text>
-        </Pressable>
-        <Pressable
-          onPress={newVerifyCodeSend}
-          className="bg-gray-300 self-center p-1.5 rounded-md"
-        >
-          <Text className="text-center text-[10px]">I need a new code</Text>
-        </Pressable>
-      </SafeAreaView>
+          <Pressable
+            className="bg-blue-300 p-2.5 my-5 rounded-md"
+            onPress={handleVerify}
+          >
+            <Text className="text-center">Verify</Text>
+          </Pressable>
+          <Pressable
+            onPress={newVerifyCodeSend}
+            className="bg-gray-300 self-center p-1.5 rounded-md"
+          >
+            <Text className="text-center text-[10px] px-5">
+              I need a new code{' '}
+            </Text>
+          </Pressable>
+        </View>
+      </Modal>
     );
   }
 
@@ -112,6 +122,7 @@ export default function SignUp() {
         keyboardType="email-address"
       />
       <Text className="mt-5">Password</Text>
+
       <TextInput
         className="border border-blue-200 rounded-lg px-2 bg-white"
         value={password}
